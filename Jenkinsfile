@@ -1,5 +1,12 @@
+
 pipeline {
     agent any
+     
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('637ab41b-0b8c-44b8-bb02-24a3b1750d42') // Use the ID set in Jenkins credentials
+        AWS_SECRET_ACCESS_KEY = credentials('637ab41b-0b8c-44b8-bb02-24a3b1750d42') // Use the ID set in Jenkins credentials
+    }
+
     
 
         parameters {
