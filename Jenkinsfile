@@ -1,5 +1,11 @@
 pipeline {
     agent any
+    
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('AKIAYAKVNZFHHV4D7OHQ')
+        AWS_SECRET_ACCESS_KEY = credentials('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')
+    }
+
         parameters {
         string(name: 'action', defaultValue: 'plan', description: 'Specify Terraform action (plan or apply)')
     }
