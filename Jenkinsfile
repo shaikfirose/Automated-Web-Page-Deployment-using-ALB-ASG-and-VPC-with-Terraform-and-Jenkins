@@ -1,60 +1,33 @@
 pipeline {
     agent any
-
-    environment {
-        AWS_CREDENTIALS_ID = 'jenkins'  // Replace with your AWS credentials ID in Jenkins
-        TERRAFORM_DIR = 'terraform'  // Path to Terraform files
+        parameters {
+        string(name: 'action', defaultValue: 'plan', description: 'Specify Terraform action (plan or apply)')
     }
+
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                // Checkout the Terraform configuration from source control
-                checkout scm
+            checkout scm
             }
         }
-
-        stage('Terraform Init') {
+        
+        stage ("terraform init") {
             steps {
-                dir("${env.TERRAFORM_DIR}") {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: "${AWS_CREDENTIALS_ID}"]]) {
-                        sh 'terraform init'
-                    }
-                }
+                sh ('terraform init -reconfigure') 
             }
         }
-
-        stage('Terraform Plan') {
+        stage ("terraform plan") {
             steps {
-                dir("${env.TERRAFORM_DIR}") {
-                    sh 'terraform plan -out=tfplan'
-                }
+                sh ('terraform plan -out=tfplan') 
             }
         }
-
-        stage('Terraform Apply') {
+                
+        stage ("terraform Action") {
             steps {
-                dir("${env.TERRAFORM_DIR}") {
-                    sh 'terraform apply -auto-approve tfplan'
-                }
-            }
-        }
-
-        stage('Output ALB DNS') {
-            steps {
-                script {
-                    dir("${env.TERRAFORM_DIR}") {
-                        def albDns = sh(script: "terraform output -raw load_balancer_dns", returnStdout: true).trim()
-                        echo "Application Load Balancer DNS: http://${albDns}"
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()  // Clean up workspace after build
+                echo "Terraform action is --> ${action}"
+                sh ('terraform ${action} --auto-approve') 
+           }
         }
     }
 }
