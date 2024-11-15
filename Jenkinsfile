@@ -6,7 +6,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'action', defaultValue: 'plan', description: 'Specify Terraform action (plan or apply)')
+        choice(name: 'action', choices: ['apply', 'destroy'], description: 'Specify Terraform action (apply or destroy)')
     }
 
     stages {
@@ -16,28 +16,26 @@ pipeline {
             }
         }
 
-        stage ("terraform init") {
+        stage("terraform init") {
             steps {
                 sh 'terraform init -reconfigure' 
             }
         }
-        
-        stage ("terraform plan") {
-            steps {
-                sh 'terraform plan -out=tfplan' 
-            }
-        }
 
-        stage ("terraform Action") {
+        stage("terraform Action") {
             steps {
                 script {
                     echo "Terraform action is --> ${params.action}"
 
-                    // Conditionally add the --auto-approve flag only for 'apply'
+                    // Conditionally handle 'apply' and 'destroy'
                     if (params.action == 'apply') {
-                        sh "terraform ${params.action} tfplan --auto-approve"
+                        echo "Running terraform apply"
+                        sh "terraform apply --auto-approve"  // Run terraform apply with --auto-approve
+                    } else if (params.action == 'destroy') {
+                        echo "Running terraform destroy"
+                        sh "terraform destroy --auto-approve"  // Run terraform destroy with --auto-approve
                     } else {
-                        sh "terraform ${params.action} -out=tfplan"
+                        error "Invalid action: ${params.action}. Only 'apply' or 'destroy' are supported."
                     }
                 }
             }
