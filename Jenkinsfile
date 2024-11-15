@@ -21,6 +21,13 @@ pipeline {
                 sh 'terraform init -reconfigure' 
             }
         }
+        
+        stage("terraform plan") {
+            steps {
+                sh 'terraform plan -out=tfplan' 
+            }
+        }
+
 
         stage("terraform Action") {
             steps {
