@@ -2,12 +2,10 @@
 pipeline {
     agent any
     
-    environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-        AWS_DEFAULT_REGION = 'us-east-1'
+environment {
+        AWS_CREDENTIALS_ID = '637ab41b-0b8c-44b8-bb02-24a3b1750d42'  // Replace with your AWS credentials ID in Jenkins
+        TERRAFORM_DIR = 'terraform'  // Path to Terraform files
     }
-
     parameters {
         string(name: 'action', defaultValue: 'plan', description: 'Specify Terraform action (plan or apply)')
     }
