@@ -31,9 +31,14 @@ pipeline {
         stage ("terraform Action") {
             steps {
                 script {
-                    // Using the 'action' parameter here
                     echo "Terraform action is --> ${params.action}"
-                    sh "terraform ${params.action} --auto-approve"
+
+                    // Conditionally add the --auto-approve flag only for 'apply'
+                    if (params.action == 'apply') {
+                        sh "terraform ${params.action} tfplan --auto-approve"
+                    } else {
+                        sh "terraform ${params.action} -out=tfplan"
+                    }
                 }
             }
         }
