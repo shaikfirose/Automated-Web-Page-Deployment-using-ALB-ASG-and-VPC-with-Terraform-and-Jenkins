@@ -2,7 +2,7 @@
 
 # Auto Scaling Group
 resource "aws_autoscaling_group" "app_asg" {
-  desired_capacity     = 2
+  desired_capacity     = 1
   max_size             = 5
   min_size             = 1
   vpc_zone_identifier  = [aws_subnet.public_subnet_1.id]  # Add more subnets here as needed
