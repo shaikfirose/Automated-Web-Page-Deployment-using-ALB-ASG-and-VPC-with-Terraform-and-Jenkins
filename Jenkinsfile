@@ -1,9 +1,15 @@
 pipeline {
     agent any
-    
-    environment {
-        AWS_CREDENTIALS_ID = 'jenkins'  // Replace with your AWS credentials ID in Jenkins
+
+
+    options {
+        disableConcurrentBuilds()
+        timestamps()
     }
+    
+    // environment {
+    //     AWS_CREDENTIALS_ID = 'jenkins'  // Replace with your AWS credentials ID in Jenkins
+    // }
 
     parameters {
         choice(name: 'action', choices: ['apply', 'destroy'], description: 'Specify Terraform action (apply or destroy)')
