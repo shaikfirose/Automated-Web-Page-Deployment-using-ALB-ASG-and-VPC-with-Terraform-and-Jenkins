@@ -1,7 +1,7 @@
 resource "aws_launch_template" "app_lt" {
   name_prefix   = "app-"
   image_id      = "ami-0dd60a46ecc6eac16"  # Replace with your Amazon Linux 2 AMI ID
-  instance_type = "t2.micro"
+  instance_type = "t3.micro"
 
   # User data script for the EC2 instance
 user_data = base64encode(<<-EOF
