@@ -5,109 +5,87 @@ resource "aws_launch_template" "app_lt" {
 
   # User data script for the EC2 instance
 
-user_data = base64encode(<<-EOF
-#!/bin/bash
-set -euxo pipefail
+user_data = base64encode(<<-EOF #!/bin/bash apt update -y apt install -y nginx
 
-exec > >(tee -a /var/log/user-data.log) 2>&1
+          # Create the Travel Guide HTML page
+          echo "<!DOCTYPE html>
+          <html lang=\"en\">
+          <head>
+              <meta charset=\"UTF-8\">
+              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+              <title>Travel Guide</title>
+              <style>
+                  body {
+                      font-family: Arial, sans-serif;
+                      background-color: #e3f2fd;
+                      color: #01579b;
+                      display: flex;
+                      flex-direction: column;
+                      align-items: center;
+                      padding: 30px;
+                  }
+                  h1 {
+                      color: #0288d1;
+                      font-size: 2.5rem;
+                  }
+                  p {
+                      font-size: 1.2rem;
+                      margin: 20px 0;
+                      text-align: center;
+                  }
+                  .destination {
+                      font-weight: bold;
+                      font-size: 1.5rem;
+                      color: #1976d2;
+                  }
+                  .image {
+                      width: 80%;
+                      max-width: 600px;
+                      border-radius: 8px;
+                  }
+                  .button {
+                      margin-top: 20px;
+                  }
+                  button {
+                      background-color: #0288d1;
+                      color: white;
+                      padding: 10px 20px;
+                      font-size: 1rem;
+                      border: none;
+                      border-radius: 5px;
+                      cursor: pointer;
+                      transition: background-color 0.3s;
+                  }
+                  button:hover {
+                      background-color: #01579b;
+                  }
+              </style>
+          </head>
+          <body>
+              <h1>Your Ultimate Travel Guide</h1>
+              <img class=\"image\" src=\"https://example.com/travel-image.jpg\" alt=\"Beautiful Destination\">
+              <p>Welcome to the Travel Guide! Here are some of the top destinations you should consider visiting:</p>
+              <div class=\"destination\">1. Paris, France</div>
+              <p>Known as the City of Lights, Paris is famous for its iconic landmarks like the Eiffel Tower, Notre-Dame Cathedral, and the Louvre Museum.</p>
 
-apt-get update -y
-DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  python3 python3-venv python3-pip git nginx
+              <div class=\"destination\">2. Tokyo, Japan</div>
+              <p>Tokyo is a bustling metropolis blending modern technology with traditional culture. Don’t miss the Shibuya Crossing and the ancient temples!</p>
 
-# Clone the Django repository
-mkdir -p /opt/django-app
-git clone --depth 1 \
-  https://github.com/shaikfirose/Django-Ecommerce-Website.git \
-  /opt/django-app/repository
+              <div class=\"destination\">3. Rome, Italy</div>
+              <p>Rich in history, Rome offers attractions like the Colosseum, Roman Forum, and the Vatican City.</p>
 
-# Find Django's manage.py (the repository may contain a nested project)
-MANAGE_FILE=$(find /opt/django-app/repository -name manage.py -type f -print -quit)
-if [ -z "$MANAGE_FILE" ]; then
-  echo "ERROR: manage.py not found in the repository"
-  exit 1
-fi
+              <div class=\"button\">
+                  <button onclick=\"alert('Happy travels and safe journey!')\">Start Your Journey</button>
+              </div>
+          </body>
+          </html>" > /var/www/html/index.html
 
-APP_DIR=$(dirname "$MANAGE_FILE")
-cd "$APP_DIR"
+          # Start and enable Nginx
+          systemctl enable nginx
+          systemctl restart nginx
+EOF )
 
-# Create a virtual environment and install dependencies
-python3 -m venv /opt/django-app/venv
-/opt/django-app/venv/bin/pip install --upgrade pip
-if [ -f requirements.txt ]; then
-  /opt/django-app/venv/bin/pip install -r requirements.txt
-fi
-/opt/django-app/venv/bin/pip install gunicorn
 
-# Find the Django WSGI application module
-WSGI_FILE=$(find "$APP_DIR" -name wsgi.py -type f -print -quit)
-if [ -z "$WSGI_FILE" ]; then
-  echo "ERROR: Django wsgi.py not found"
-  exit 1
-fi
-
-WSGI_MODULE=$(python3 -c \
-  'import os,sys; print(os.path.relpath(sys.argv[1],sys.argv[2]).replace(os.sep,".")[:-3])' \
-  "$WSGI_FILE" "$APP_DIR")
-
-# Run database migrations
-/opt/django-app/venv/bin/python "$MANAGE_FILE" migrate --noinput
-
-# Collect static files; check logs if the project's settings require configuration
-/opt/django-app/venv/bin/python "$MANAGE_FILE" collectstatic --noinput
-
-# Create a systemd service for Django/Gunicorn
-cat > /etc/systemd/system/django-app.service <<SERVICE
-[Unit]
-Description=Django Ecommerce Application
-After=network.target
-
-[Service]
-User=www-data
-Group=www-data
-WorkingDirectory=$APP_DIR
-Environment="PATH=/opt/django-app/venv/bin"
-ExecStart=/opt/django-app/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 $WSGI_MODULE
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-SERVICE
-
-# Configure Nginx as a reverse proxy
-cat > /etc/nginx/sites-available/django-app <<'NGINX'
-server {
-    listen 80 default_server;
-    server_name _;
-
-    location /static/ {
-        alias /opt/django-app/static/;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
-    }
-}
-NGINX
-
-rm -f /etc/nginx/sites-enabled/default
-ln -sfn /etc/nginx/sites-available/django-app /etc/nginx/sites-enabled/django-app
-
-# Allow the service account to read application files
-chmod -R a+rX /opt/django-app/repository
-chmod -R a+rX /opt/django-app/venv
-
-nginx -t
-systemctl daemon-reload
-systemctl enable --now django-app
-systemctl enable --now nginx
-systemctl restart nginx
-EOF
-)
 
 
 
